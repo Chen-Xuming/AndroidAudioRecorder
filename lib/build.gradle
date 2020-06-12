@@ -5,7 +5,7 @@ android {
     buildToolsVersion "24.0.2"
 
     defaultConfig {
-        minSdkVersion 15
+        minSdkVersion 16
         targetSdkVersion 24
         versionCode 1
         versionName "1.0"
@@ -18,8 +18,15 @@ android {
     }
 }
 
+repositories {
+    maven { url "https://jitpack.io" }
+}
+
 dependencies {
     compile 'com.android.support:appcompat-v7:24.2.1'
     compile 'com.kailashdabhi:om-recorder:1.1.0'
     compile 'com.cleveroad:audiovisualization:1.0.0'
+    compile 'com.github.Jay-Goo:Mp3Converter:v0.0.3'        // 将.wav转换为.mp3
+    compile 'com.kaopiz:kprogresshud:1.0.2'                 // 当录音时间较长时，转换为mp3格式
+                                                            // 就是一个耗时的过程，因此设置一个等待动画
 }

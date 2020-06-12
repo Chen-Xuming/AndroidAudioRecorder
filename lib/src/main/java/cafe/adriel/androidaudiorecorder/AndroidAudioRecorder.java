@@ -49,7 +49,7 @@ public class AndroidAudioRecorder {
     }
 
     public AndroidAudioRecorder setFilePath(String filePath) {
-        this.filePath = filePath;
+        this.filePath = filePath + "/temp_audio_record_file.wav";
         return this;
     }
 

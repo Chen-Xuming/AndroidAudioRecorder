@@ -1,5 +1,6 @@
 package cafe.adriel.androidaudiorecorder;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.ColorDrawable;
@@ -17,14 +18,18 @@ import android.widget.TextView;
 
 import com.cleveroad.audiovisualization.DbmHandler;
 import com.cleveroad.audiovisualization.GLAudioVisualizationView;
+import com.kaopiz.kprogresshud.KProgressHUD;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import cafe.adriel.androidaudiorecorder.model.AudioChannel;
 import cafe.adriel.androidaudiorecorder.model.AudioSampleRate;
 import cafe.adriel.androidaudiorecorder.model.AudioSource;
+import jaygoo.library.converter.Mp3Converter;
 import omrecorder.AudioChunk;
 import omrecorder.OmRecorder;
 import omrecorder.PullTransport;
@@ -152,7 +157,7 @@ public class AudioRecorderActivity extends AppCompatActivity
 
     @Override
     protected void onPause() {
-        restartRecording(null);
+        //restartRecording(null);   // 注释掉就可以后台录音
         try {
             visualizerView.onPause();
         } catch (Exception e){ }
@@ -163,6 +168,13 @@ public class AudioRecorderActivity extends AppCompatActivity
     protected void onDestroy() {
         restartRecording(null);
         setResult(RESULT_CANCELED);
+        File wav_file = new File(filePath);
+
+        // 删掉临时文件
+        if(wav_file.exists()){
+            wav_file.delete();
+        }
+
         try {
             visualizerView.release();
         } catch (Exception e){ }
@@ -208,8 +220,8 @@ public class AudioRecorderActivity extends AppCompatActivity
 
     private void selectAudio() {
         stopRecording();
-        setResult(RESULT_OK);
-        finish();
+
+        saveMp3File();
     }
 
     public void toggleRecording(View v) {
@@ -257,7 +269,7 @@ public class AudioRecorderActivity extends AppCompatActivity
         statusView.setVisibility(View.INVISIBLE);
         restartView.setVisibility(View.INVISIBLE);
         playView.setVisibility(View.INVISIBLE);
-        recordView.setImageResource(R.drawable.aar_ic_rec);
+        recordView.setImageResource(R.drawable.ic_aar_ic_rec);
         timerView.setText("00:00:00");
         recorderSecondsElapsed = 0;
         playerSecondsElapsed = 0;
@@ -297,7 +309,7 @@ public class AudioRecorderActivity extends AppCompatActivity
         statusView.setVisibility(View.VISIBLE);
         restartView.setVisibility(View.VISIBLE);
         playView.setVisibility(View.VISIBLE);
-        recordView.setImageResource(R.drawable.aar_ic_rec);
+        recordView.setImageResource(R.drawable.ic_aar_ic_rec);
         playView.setImageResource(R.drawable.aar_ic_play);
 
         visualizerView.release();
@@ -320,7 +332,7 @@ public class AudioRecorderActivity extends AppCompatActivity
 
         recorderSecondsElapsed = 0;
         if (recorder != null) {
-            recorder.stopRecording();
+            recorder.stopRecording();       // wav文件将在这里保存
             recorder = null;
         }
 
@@ -415,5 +427,52 @@ public class AudioRecorderActivity extends AppCompatActivity
                 }
             }
         });
+    }
+
+    /*
+            将wav转换为mp3，然后结束activity。
+            如果成功，将返回一个绝对路径（Intent：mp3_file_path, String 类型），以及setResult(RESULT_OK)；
+            否则setResult(2, Intent).
+     */
+    private void saveMp3File(){
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");
+        String timeStamp = simpleDateFormat.format(new Date());
+        final String mp3FilePath = filePath.replace("temp_audio_record_file.wav",
+                "record_" + timeStamp + ".mp3");
+        Mp3Converter.init(48000, 2, 1, 44100, 96, 7);
+
+        final KProgressHUD waiting_dialog = KProgressHUD.create(AudioRecorderActivity.this)
+                .setStyle(KProgressHUD.Style.SPIN_INDETERMINATE)
+                .setLabel(getResources().getString(R.string.aar_waiting_save))
+                .setCancellable(false)
+                .setAnimationSpeed(2)
+                .setDimAmount(0.5f)
+                .show();
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+
+
+                Mp3Converter.convertMp3(filePath, mp3FilePath); // wav转mp3
+
+                waiting_dialog.dismiss();
+
+                File mp3File = new File(mp3FilePath);
+                Intent intent = new Intent();
+                if(mp3File.exists()){          // 成功生成
+                    intent.putExtra("mp3_file_path", mp3FilePath);
+                    setResult(RESULT_OK, intent);       // RESULT_OK = -1
+                }else{
+                    setResult(2, intent);     // failed
+                }
+                File wavFile = new File(filePath);
+                if(wavFile.exists()){
+                    wavFile.delete();
+                }
+                finish();
+            }
+        }).start();
     }
 }
